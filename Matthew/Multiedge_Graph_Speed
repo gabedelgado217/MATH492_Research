@@ -1,0 +1,195 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Setting edge 1 for compact support Multiedge graph
+
+#Step Sizes with h corresponding to space and k to time
+h = 0.125
+k = 0.003
+x = np.arange(-100, -1 + h, h)
+t = np.arange(0, 25 + k, k)
+
+#Step Function Initial Conditions
+
+initialConditions = []
+for element in x:
+    initialConditions.append(0)
+    
+initialConditions_1 = np.array(initialConditions, dtype = 'float64')
+
+#Setting first edge, e2, of multiedge for compact support multiedge graph
+
+#Step Sizes with h corresponding to space and k to time
+h = 0.125
+k = 0.003
+x = np.arange(-1, 0 + h, h)
+t = np.arange(0, 25 + k, k)
+
+initialConditions = []
+x_0 = 0
+for element in x:
+    numerator = -1
+    denominator = (1 - ((element - x_0)/(10))**2)
+    if denominator == 0:
+        initialConditions.append(0)
+    else:
+        initialConditions.append(np.exp((-1)/(1 - ((element - x_0)/(10))**2)))
+
+initialConditions_2 = np.array(initialConditions, dtype = 'float64')
+
+#Setting second edge, e3, of multiedge for compact support multiedge graph
+
+#Step Sizes with h corresponding to space and k to time
+h = 0.125
+k = 0.003
+x = np.arange(-1, 0 + h, h)
+t = np.arange(0, 25 + k, k)
+
+initialConditions = []
+x_0 = 0
+for element in x:
+    numerator = -1
+    denominator = (1 - ((element - x_0)/(10))**2)
+    if denominator == 0:
+        initialConditions.append(0)
+    else:
+        initialConditions.append(np.exp((-1)/(1 - ((element - x_0)/(10))**2)))
+
+initialConditions_3 = np.array(initialConditions, dtype = 'float64')
+
+#Setting edge 4 for compact support Multiedge graph
+
+#Step Sizes with h corresponding to space and k to time
+h = 0.125
+k = 0.003
+x = np.arange(0, 100 + h, h)
+t = np.arange(0, 25 + k, k)
+
+#Step Function Initial Conditions
+
+initialConditions = []
+for element in x:
+    initialConditions.append(0)
+    
+initialConditions_4 = np.array(initialConditions, dtype = 'float64')
+
+
+#Takes in an initial condition array and forces nuemann boundary conditions
+def nuemann_conditions(u, i, j):
+    N = len(u)
+    u[i] = u[j]
+    
+    return u
+
+#Takes in 3 edge arrays and forces them to have the same vertex conditions
+def vertex_conditions(e1, e2, e3, e4):
+    N = len(e1)
+    vertex_val_1 = (e1[-2] + e2[1] + e3[1])/3
+    vertex_val_2 = (e4[1] + e2[-2] + e3[-2])/3
+
+    #Equality at the vertices
+    e1[-1] = vertex_val_1
+    e2[0] = vertex_val_1
+    e3[0] = vertex_val_1
+    e4[0] = vertex_val_2
+    e2[-1] = vertex_val_2
+    e3[-1] = vertex_val_2
+    
+
+    return e1, e2, e3, e4
+    
+    
+#Establishing a function to perform FTCS calculation given time and position
+def ftcs_comp(dt, dx, u):
+
+    #x = np.linspace(0, space, s_points + 1)
+    #t = np.linspace(0, time, t_points)
+    
+    u_new = np.zeros_like(u, dtype = 'float64')
+
+    N = len(u)
+    factor = dt/(dx**2)
+
+    for j in range(1, N-1):
+        
+        # diffusion part
+        diffusion = factor * (u[j+1] - 2*u[j] + u[j-1])
+
+        # reaction part 
+        reaction = dt * u[j] * (1.0 - u[j])
+
+        # add them together
+        u_new[j] = u[j] + diffusion + reaction
+
+    return u_new
+
+#Establishing the final simulation function
+def final_sim(e1, e2, e3, e4, time, t_step, space, s_step):
+    t_array = np.linspace(0, time, int(time/t_step))
+    for unit in t_array:
+        
+        #Establishing Boundary Conditions
+        nuemann_conditions(e1, 0, 2)
+        nuemann_conditions(e4, -1, -3)
+        
+
+        #Establishing Vertex Conditions
+        e1, e2, e3, e4 = vertex_conditions(e1, e2, e3, e4)
+
+        #Perform FTCS Computation
+        e1 = ftcs_comp(t_step, s_step, e1)
+        e2 = ftcs_comp(t_step, s_step, e2)
+        e3 = ftcs_comp(t_step, s_step, e3)
+        e4 = ftcs_comp(t_step, s_step, e4)
+
+    return e1, e2, e3, e4, t_array
+
+        
+
+    #Recreating Speed Calculation for this Graph
+
+theta = 0.2
+
+def ss_calc_right(scan_edge, dx, theta):
+    for index in range(len(scan_edge)):
+        if scan_edge[index] >= theta and scan_edge[index + 1] < theta:
+            xi = (index * dx) + 1
+            cross_index = index
+            cross_loc = scan_edge[index]
+    numerator = scan_edge[cross_index] - theta
+    denominator = scan_edge[cross_index] - scan_edge[cross_index + 1]
+    x_theta_tn = xi + (dx * (numerator / denominator))
+    
+    return x_theta_tn
+
+def ss_calc_left(scan_edge, dx, theta):
+    for index in range(1, len(scan_edge)):
+        if scan_edge[index - 1] <= theta and scan_edge[index] > theta:
+            xi = (index * dx) - 99
+            cross_index = index
+            cross_loc = scan_edge[index]
+    numerator = scan_edge[cross_index] - theta
+    denominator = scan_edge[cross_index - 1] - scan_edge[cross_index]
+    x_theta_tn = xi + (dx * (numerator / denominator))
+    
+    return x_theta_tn
+
+def ss_calc_mult(scan_edge, dx, theta):
+    for index in range(1,len(scan_edge)):
+        if scan_edge[index - 1] >= theta and scan_edge[index] < theta:
+            xi = (index * dx) - 1
+            cross_index = index
+            cross_loc = scan_edge[index]
+    numerator = scan_edge[cross_index] - theta
+    denominator = scan_edge[cross_index - 1] - scan_edge[cross_index]
+    x_theta_tn = xi + (dx * (numerator / denominator))
+    
+    return x_theta_tn
+
+total_time = 45
+
+spreading_speed_1 =  (-1) * ss_calc_left(e1, 0.125, theta) / total_time 
+
+spreading_speed_2 = ss_calc_right(e4, 0.125, theta) / total_time
+
+spreading_speed_3 =  ss_calc_mult(e2, 0.125, theta) / total_time
